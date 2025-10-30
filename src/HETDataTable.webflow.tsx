@@ -23,6 +23,14 @@ export default declareComponent(HETDataTable, {
       name: "Demographic Field Name",
       defaultValue: "race_and_ethnicity",
     }),
+    metricFields: props.Text({
+      name: "Metric Fields (comma-separated)",
+      defaultValue: "hiv_prevalence_per_100k,hiv_diagnoses_per_100k,hiv_deaths_per_100k",
+    }),
+    columnHeaders: props.Text({
+      name: "Column Headers (comma-separated)",
+      defaultValue: "HIV prevalence per 100k people,HIV diagnoses per 100k people,HIV deaths per 100k people",
+    }),
     timeFilter: props.Text({
       name: "Time Period",
       defaultValue: "2021",
@@ -30,6 +38,22 @@ export default declareComponent(HETDataTable, {
     showAllRow: props.Boolean({
       name: "Show 'All' Row",
       defaultValue: true,
+    }),
+    methodologyUrl: props.Text({
+      name: "Methodology Link",
+      defaultValue: "https://healthequitytracker.org/exploredata?mls=1.hiv-3.00&group1=All",
+    }),
+    sourceUrl: props.Text({
+      name: "Data Source Link",
+      defaultValue: "https://www.cdc.gov/nchhstp/atlas/index.htm",
+    }),
+    sourceText: props.Text({
+      name: "Source Name",
+      defaultValue: "CDC NCHHSTP AtlasPlus",
+    }),
+    dataYear: props.Text({
+      name: "Data Year",
+      defaultValue: "2021",
     }),
   },
 });

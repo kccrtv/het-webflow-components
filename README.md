@@ -55,3 +55,19 @@ Should show the HET submodule with a commit hash
 ```
 npx webflow library share
 ```
+
+✔ All webflow packages are updated. To disable update checks, use WEBFLOW_SKIP_UPDATE_CHECKS=true
+✔ Initializing
+✔ Looking for webflow.json manifest
+✔ Collecting metadata
+? Code components:
+  - HET Data Table (Changed)
+  - HET Rate Bar Chart (Changed)
+
+Ready to update HET Components? (Y/n)
+
+✔ Creating code library
+✔ Compiling code components
+✔ Uploading files
+✔ Sharing library
+Code library shared successfully: https://webflow.com/dashboard/workspace/shli-workspace/shared-libraries-and-templates

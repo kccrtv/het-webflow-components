@@ -1,14 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface HETDataTableProps {
   datasetUrl: string;
   title?: string;
   subtitle?: string;
   demographicField?: string;
-  metricFields?: string[];
-  columnHeaders?: string[];
+  metricFields?: string; // Comma-separated string
+  columnHeaders?: string; // Comma-separated string
   timeFilter?: string;
   showAllRow?: boolean;
+  methodologyUrl?: string;
+  sourceUrl?: string;
+  sourceText?: string;
+  dataYear?: string;
 }
 
 interface DataRow {
@@ -20,14 +24,30 @@ const HETDataTable: React.FC<HETDataTableProps> = ({
   title = 'Summary',
   subtitle = '',
   demographicField = 'race_and_ethnicity',
-  metricFields = ['hiv_prevalence_per_100k', 'hiv_prevalence_pct_share', 'population_pct'],
-  columnHeaders = ['HIV prevalence per 100k people', 'Share of total HIV prevalence', 'Population share (ages 13+)'],
+  metricFields = 'hiv_prevalence_per_100k,hiv_diagnoses_per_100k,hiv_deaths_per_100k',
+  columnHeaders = 'HIV prevalence per 100k people,HIV diagnoses per 100k people,HIV deaths per 100k people',
   timeFilter = '2021',
-  showAllRow = true
+  showAllRow = true,
+  methodologyUrl = 'https://healthequitytracker.org/exploredata?mls=1.hiv-3.00&group1=All',
+  sourceUrl = 'https://www.cdc.gov/nchhstp/atlas/index.htm',
+  sourceText = 'CDC NCHHSTP AtlasPlus',
+  dataYear = '2021'
 }) => {
   const [data, setData] = useState<DataRow[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  // Parse comma-separated strings into arrays
+  const metricFieldsArray = metricFields.split(',').map(s => s.trim()).filter(s => s);
+  const columnHeadersArray = columnHeaders.split(',').map(s => s.trim()).filter(s => s);
+
+  // Debug logging
+  console.log('metricFields:', metricFields);
+  console.log('metricFieldsArray:', metricFieldsArray);
+  console.log('columnHeaders:', columnHeaders);
+  console.log('columnHeadersArray:', columnHeadersArray);
 
   // Fetch data
   useEffect(() => {
@@ -49,6 +69,22 @@ const HETDataTable: React.FC<HETDataTableProps> = ({
         setLoading(false);
       });
   }, [datasetUrl]);
+
+  // Track responsive width
+  useEffect(() => {
+    if (!tableRef.current) return;
+
+    const updateWidth = () => {
+      if (tableRef.current) {
+        const parentWidth = tableRef.current.parentElement?.clientWidth;
+        setContainerWidth(parentWidth || null);
+      }
+    };
+
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
 
   if (loading) {
     return (
@@ -92,9 +128,39 @@ const HETDataTable: React.FC<HETDataTableProps> = ({
     );
   }
 
+  // Debug: log available fields
+  console.log('Available fields in data:', Object.keys(filteredData[0]));
+
   // Separate "All" from other categories
   const allData = filteredData.find(d => d[demographicField] === 'All');
   let otherData = filteredData.filter(d => d[demographicField] !== 'All');
+
+  // Calculate percentage shares if requested but not in data
+  if (metricFieldsArray.some(f => f.includes('_pct_share') || f === 'population_pct')) {
+    const allPrevalence = allData?.hiv_prevalence_per_100k || 0;
+    
+    filteredData = filteredData.map(row => {
+      const newRow = { ...row };
+      
+      // Calculate HIV prevalence percent share
+      if (metricFieldsArray.includes('hiv_prevalence_pct_share') && !row.hiv_prevalence_pct_share) {
+        const prevalence = row.hiv_prevalence_per_100k || 0;
+        newRow.hiv_prevalence_pct_share = allPrevalence > 0 ? (prevalence / allPrevalence) * 100 : 0;
+      }
+      
+      // For population_pct, we'd need population data which isn't in this dataset
+      // Set to 0 or N/A for now
+      if (metricFieldsArray.includes('population_pct') && !row.population_pct) {
+        newRow.population_pct = null; // Will show as "—"
+      }
+      
+      return newRow;
+    });
+    
+    // Recalculate allData and otherData after adding calculated fields
+    const allDataUpdated = filteredData.find(d => d[demographicField] === 'All');
+    otherData = filteredData.filter(d => d[demographicField] !== 'All');
+  }
 
   // Sort alphabetically by demographic
   otherData = otherData.sort((a, b) => 
@@ -149,12 +215,14 @@ const HETDataTable: React.FC<HETDataTableProps> = ({
   };
 
   return (
-    <div style={{ 
-      fontFamily: 'sans-serif', 
-      padding: '20px',
-      maxWidth: '100%',
-      overflowX: 'auto'
-    }}>
+    <div 
+      ref={tableRef}
+      style={{ 
+        fontFamily: 'sans-serif', 
+        padding: '20px',
+        maxWidth: '100%',
+        overflowX: 'auto'
+      }}>
       {/* Title */}
       <h3 style={{ 
         textAlign: 'center', 
@@ -199,7 +267,7 @@ const HETDataTable: React.FC<HETDataTableProps> = ({
             }}>
               {demographicField.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
             </th>
-            {columnHeaders.map((header, idx) => (
+            {columnHeadersArray.map((header, idx) => (
               <th key={idx} style={{
                 padding: '12px',
                 textAlign: 'left',
@@ -226,9 +294,14 @@ const HETDataTable: React.FC<HETDataTableProps> = ({
               }}>
                 {row[demographicField]}
               </td>
-              {metricFields.map((field, fieldIdx) => {
+              {metricFieldsArray.map((field, fieldIdx) => {
                 const value = row[field];
                 const additionalInfo = getAdditionalInfo(row, field);
+                
+                // Debug logging for first row
+                if (rowIdx === 0) {
+                  console.log(`Field: ${field}, Value: ${value}`);
+                }
                 
                 return (
                   <td key={fieldIdx} style={{
@@ -292,10 +365,30 @@ const HETDataTable: React.FC<HETDataTableProps> = ({
         lineHeight: '1.6'
       }}>
         <p style={{ margin: '5px 0' }}>
-          Note. (NH) indicates 'Non-Hispanic'. View methodology.
+          Note. (NH) indicates 'Non-Hispanic'. {methodologyUrl && (
+            <a 
+              href={methodologyUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ color: '#0066cc', textDecoration: 'none' }}
+            >
+              View methodology
+            </a>
+          )}
+          {!methodologyUrl && 'View methodology'}
+          .
         </p>
         <p style={{ margin: '5px 0' }}>
-          Sources: CDC NCHHSTP AtlasPlus (data from {timeFilter}).
+          Sources: {sourceUrl ? (
+            <a 
+              href={sourceUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ color: '#0066cc', textDecoration: 'none' }}
+            >
+              {sourceText}
+            </a>
+          ) : sourceText} (data from {dataYear}).
         </p>
         <p style={{ margin: '5px 0' }}>
           Health Equity Tracker. ({new Date().getFullYear()}). Satcher Health Leadership Institute. 

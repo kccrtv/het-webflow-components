@@ -32,7 +32,7 @@ export default declareComponent(HETRateBarChart, {
       defaultValue: "2021",
     }),
     width: props.Number({
-      name: "Width",
+      name: "Max Width",
       defaultValue: 900,
     }),
     height: props.Number({
@@ -42,6 +42,22 @@ export default declareComponent(HETRateBarChart, {
     showAllBar: props.Boolean({
       name: "Show 'All' Category",
       defaultValue: true,
+    }),
+    methodologyUrl: props.Text({
+      name: "Methodology Link",
+      defaultValue: "https://healthequitytracker.org/exploredata?mls=1.hiv-3.00&group1=All",
+    }),
+    sourceUrl: props.Text({
+      name: "Data Source Link",
+      defaultValue: "https://www.cdc.gov/nchhstp/atlas/index.htm",
+    }),
+    sourceText: props.Text({
+      name: "Source Name",
+      defaultValue: "CDC NCHHSTP AtlasPlus",
+    }),
+    dataYear: props.Text({
+      name: "Data Year",
+      defaultValue: "2021",
     }),
   },
 });

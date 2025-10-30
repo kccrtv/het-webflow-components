@@ -11,6 +11,10 @@ interface HETRateBarChartProps {
   width?: number;
   height?: number;
   showAllBar?: boolean;
+  methodologyUrl?: string;
+  sourceUrl?: string;
+  sourceText?: string;
+  dataYear?: string;
 }
 
 interface DataRow {
@@ -26,12 +30,18 @@ const HETRateBarChart: React.FC<HETRateBarChartProps> = ({
   timeFilter = '2021',
   width = 900,
   height = 600,
-  showAllBar = true
+  showAllBar = true,
+  methodologyUrl = 'https://healthequitytracker.org/exploredata?mls=1.covid-3.00&group1=All',
+  sourceUrl = 'https://www.cdc.gov/nchhstp/atlas/index.htm',
+  sourceText = 'CDC NCHHSTP AtlasPlus',
+  dataYear = '2021'
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<DataRow[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [containerWidth, setContainerWidth] = useState(width);
 
   // Fetch data
   useEffect(() => {
@@ -54,6 +64,22 @@ const HETRateBarChart: React.FC<HETRateBarChartProps> = ({
       });
   }, [datasetUrl]);
 
+  // Handle responsive width
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const updateWidth = () => {
+      if (containerRef.current) {
+        const parentWidth = containerRef.current.parentElement?.clientWidth || width;
+        setContainerWidth(Math.min(parentWidth, width));
+      }
+    };
+
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, [width]);
+
   // Render chart
   useEffect(() => {
     if (!data || !containerRef.current || data.length === 0) return;
@@ -75,8 +101,10 @@ const HETRateBarChart: React.FC<HETRateBarChartProps> = ({
     const allData = filteredData.find(d => d[demographicField] === 'All');
     let otherData = filteredData.filter(d => d[demographicField] !== 'All');
 
-    // Sort other data by metric value (descending)
-    otherData = otherData.sort((a, b) => b[metricField] - a[metricField]);
+    // Sort other data alphabetically by demographic
+    otherData = otherData.sort((a, b) => 
+      String(a[demographicField]).localeCompare(String(b[demographicField]))
+    );
 
     // Combine: All at top, then others
     const chartData = showAllBar && allData ? [allData, ...otherData] : otherData;
@@ -84,15 +112,18 @@ const HETRateBarChart: React.FC<HETRateBarChartProps> = ({
     // Clear previous chart
     d3.select(containerRef.current).selectAll('*').remove();
 
+    // Use responsive width
+    const chartWidth = containerWidth;
+
     // Set up dimensions
     const margin = { top: 80, right: 40, bottom: 80, left: 200 };
-    const innerWidth = width - margin.left - margin.right;
+    const innerWidth = chartWidth - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
     // Create SVG
     const svg = d3.select(containerRef.current)
       .append('svg')
-      .attr('width', width)
+      .attr('width', chartWidth)
       .attr('height', height);
 
     const g = svg.append('g')
@@ -116,7 +147,7 @@ const HETRateBarChart: React.FC<HETRateBarChartProps> = ({
 
     // Add title
     svg.append('text')
-      .attr('x', width / 2)
+      .attr('x', chartWidth / 2)
       .attr('y', 30)
       .attr('text-anchor', 'middle')
       .style('font-size', '20px')
@@ -127,7 +158,7 @@ const HETRateBarChart: React.FC<HETRateBarChartProps> = ({
     // Add subtitle if provided
     if (subtitle) {
       svg.append('text')
-        .attr('x', width / 2)
+        .attr('x', chartWidth / 2)
         .attr('y', 52)
         .attr('text-anchor', 'middle')
         .style('font-size', '14px')
@@ -157,7 +188,7 @@ const HETRateBarChart: React.FC<HETRateBarChartProps> = ({
     // Add X axis label
     const metricLabel = metricField.replace(/_/g, ' ').replace('per 100k', 'per 100k');
     svg.append('text')
-      .attr('x', width / 2)
+      .attr('x', chartWidth / 2)
       .attr('y', height - 20)
       .attr('text-anchor', 'middle')
       .style('font-size', '13px')
@@ -175,6 +206,21 @@ const HETRateBarChart: React.FC<HETRateBarChartProps> = ({
       .style('font-family', 'sans-serif')
       .style('font-weight', '600')
       .text(demographicField.replace(/_/g, ' '));
+
+    // Create tooltip
+    const tooltip = d3.select('body')
+      .append('div')
+      .attr('class', 'het-tooltip')
+      .style('position', 'absolute')
+      .style('visibility', 'hidden')
+      .style('background-color', 'rgba(0, 0, 0, 0.8)')
+      .style('color', 'white')
+      .style('padding', '10px')
+      .style('border-radius', '4px')
+      .style('font-size', '14px')
+      .style('font-family', 'sans-serif')
+      .style('pointer-events', 'none')
+      .style('z-index', '1000');
 
     // Add Y axis
     g.append('g')
@@ -218,9 +264,22 @@ const HETRateBarChart: React.FC<HETRateBarChartProps> = ({
         const currentColor = getBarColor(d);
         d3.select(this)
           .attr('fill', d3.color(currentColor)?.darker(0.3)?.toString() || currentColor);
+        
+        const val = Number(d[metricField]);
+        const formattedVal = val >= 1000 ? `${val.toLocaleString()}` : `${Math.round(val)}`;
+        
+        tooltip
+          .style('visibility', 'visible')
+          .html(`<strong>${formattedVal} per 100k</strong>`);
+      })
+      .on('mousemove', function(event) {
+        tooltip
+          .style('top', (event.pageY - 10) + 'px')
+          .style('left', (event.pageX + 10) + 'px');
       })
       .on('mouseout', function(event, d) {
         d3.select(this).attr('fill', getBarColor(d));
+        tooltip.style('visibility', 'hidden');
       });
 
     // Add value labels at end of bars
@@ -244,7 +303,12 @@ const HETRateBarChart: React.FC<HETRateBarChartProps> = ({
         return `${Math.round(val)} per 100k`;
       });
 
-  }, [data, width, height, metricField, demographicField, timeFilter, showAllBar]);
+    // Cleanup tooltip on unmount
+    return () => {
+      tooltip.remove();
+    };
+
+  }, [data, containerWidth, height, metricField, demographicField, timeFilter, showAllBar]);
 
   if (loading) {
     return (
@@ -294,13 +358,33 @@ const HETRateBarChart: React.FC<HETRateBarChartProps> = ({
         marginTop: '20px', 
         fontSize: '11px', 
         color: '#666',
-        maxWidth: width 
+        maxWidth: containerWidth 
       }}>
         <p style={{ margin: '5px 0' }}>
-          Note: (NH) indicates 'Non-Hispanic'. View methodology.
+          Note: (NH) indicates 'Non-Hispanic'. {methodologyUrl && (
+            <a 
+              href={methodologyUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ color: '#0066cc', textDecoration: 'none' }}
+            >
+              View methodology
+            </a>
+          )}
+          {!methodologyUrl && 'View methodology'}
+          .
         </p>
         <p style={{ margin: '5px 0' }}>
-          Sources: CDC data from {timeFilter}.
+          Sources: {sourceUrl ? (
+            <a 
+              href={sourceUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ color: '#0066cc', textDecoration: 'none' }}
+            >
+              {sourceText}
+            </a>
+          ) : sourceText} (data from {dataYear}).
         </p>
         <p style={{ margin: '5px 0' }}>
           Health Equity Tracker. ({new Date().getFullYear()}). Satcher Health Leadership Institute. 
