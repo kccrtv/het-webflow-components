@@ -1,0 +1,3 @@
+[submodule "het-source"]
+	path = het-source
+	url = https://github.com/SatcherInstitute/health-equity-tracker.git
