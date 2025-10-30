@@ -8,5 +8,29 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@webflow/data-types": "^1.0.2",
+    "@webflow/react": "^1.0.2",
+    "@webflow/webflow-cli": "^1.8.48"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.4",
+    "@mui/material": "^7.3.4",
+    "@types/d3": "^7.4.3",
+    "d3": "^7.9.0",
+    "data-forge": "^1.10.4",
+    "dom-to-image-more": "^3.7.2",
+    "jotai": "^2.15.0",
+    "jotai-location": "^0.6.2",
+    "just-debounce-it": "^3.2.0",
+    "react-animate-height": "^3.2.3",
+    "react-router": "^7.9.5",
+    "react-router-dom": "^7.9.5",
+    "react-router-hash-link": "^2.4.3",
+    "react-share": "^5.2.2",
+    "topojson-client": "^3.1.0"
+  }
 }

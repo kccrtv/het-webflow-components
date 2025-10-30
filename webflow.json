@@ -1,0 +1,17 @@
+{
+  "library": {
+    "name": "HET Components",
+    "components": [
+      "./src/**/*.webflow.@(js|jsx|mjs|ts|tsx)"
+    ],
+    "id": "code-components",
+    "description": "HET to Webflow code components"
+  },
+  "telemetry": {
+    "global": {
+      "allowTelemetry": false,
+      "lastPrompted": 1761855260616,
+      "version": "1.8.48"
+    }
+  }
+}
